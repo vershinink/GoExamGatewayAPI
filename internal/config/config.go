@@ -1,3 +1,4 @@
+// Пакет для работы с файлом конфига.
 package config
 
 import (
@@ -20,7 +21,8 @@ type HTTPServer struct {
 }
 
 // MustLoad - инициализирует данные из конфиг файла. Путь к файлу берет из
-// переменной окружения GATEWAY_CONFIG_PATH.
+// переменной окружения GATEWAY_CONFIG_PATH. Если не удается, то завершает
+// приложение с ошибкой.
 func MustLoad() *Config {
 	configPath := os.Getenv("GATEWAY_CONFIG_PATH")
 	if configPath == "" {

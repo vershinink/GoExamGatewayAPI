@@ -1,3 +1,4 @@
+// Пакет для остановки вызывающей горутины.
 package stopsignal
 
 import (

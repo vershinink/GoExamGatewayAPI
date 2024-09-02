@@ -1,3 +1,4 @@
+// Пакет для работы с обработчиками API.
 package api
 
 import (
@@ -6,6 +7,7 @@ import (
 	"strconv"
 )
 
+// Latest возвращает страницу последних по дате публикации постов.
 func Latest() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// const operation = "server.api.Latest"

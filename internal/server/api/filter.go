@@ -1,3 +1,4 @@
+// Пакет для работы с обработчиками API.
 package api
 
 import (
@@ -5,6 +6,7 @@ import (
 	"net/http"
 )
 
+// Filter возвращает отфильтрованный список постов.
 func Filter() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// const operation = "server.api.Filter"

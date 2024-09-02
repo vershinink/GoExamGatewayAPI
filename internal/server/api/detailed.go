@@ -1,3 +1,4 @@
+// Пакет для работы с обработчиками API.
 package api
 
 import (
@@ -5,6 +6,7 @@ import (
 	"net/http"
 )
 
+// Detailed возвращает полную структуру новости со всеми комментариями.
 func Detailed() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// const operation = "server.api.Detailed"
