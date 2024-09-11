@@ -1,6 +1,6 @@
 # Server
 http_server:
-  address: "localhost:80"
+  address: "0.0.0.0:10500"
   read_timeout: 5s
   write_timeout: 10s
   idle_timeout: 60s
