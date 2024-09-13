@@ -11,6 +11,9 @@ import (
 
 // Структура конфига
 type Config struct {
+	News       string `yaml:"news_service"`
+	Comments   string `yaml:"comments_service"`
+	Censor     string `yaml:"censor_service"`
 	HTTPServer `yaml:"http_server"`
 }
 type HTTPServer struct {

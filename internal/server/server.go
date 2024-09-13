@@ -4,7 +4,6 @@ package server
 import (
 	"GoExamGatewayAPI/internal/config"
 	"GoExamGatewayAPI/internal/middleware"
-	"GoExamGatewayAPI/internal/server/api"
 	"context"
 	"errors"
 	"log"
@@ -13,14 +12,29 @@ import (
 	"time"
 )
 
+const (
+	news     = "news"
+	comments = "comments"
+	censor   = "censor"
+)
+
+const reqTime time.Duration = time.Second * 10
+
 // Server - структура сервера.
 type Server struct {
-	srv *http.Server
-	mux *http.ServeMux
+	srv   *http.Server
+	mux   *http.ServeMux
+	proxy map[string]string
+	cl    *http.Client
 }
 
 // New - конструктор сервера.
 func New(cfg *config.Config) *Server {
+	p := make(map[string]string)
+	p[news] = cfg.News
+	p[comments] = cfg.Comments
+	p[censor] = cfg.Censor
+
 	m := http.NewServeMux()
 	server := &Server{
 		srv: &http.Server{
@@ -30,7 +44,11 @@ func New(cfg *config.Config) *Server {
 			WriteTimeout: cfg.WriteTimeout,
 			IdleTimeout:  cfg.IdleTimeout,
 		},
-		mux: m,
+		mux:   m,
+		proxy: p,
+		cl: &http.Client{
+			Timeout: reqTime,
+		},
 	}
 	return server
 }
@@ -55,10 +73,9 @@ func (s *Server) Middleware() {
 
 // API инициализирует все обработчики API.
 func (s *Server) API() {
-	s.mux.HandleFunc("GET /news/latest", api.Latest())
-	s.mux.HandleFunc("GET /news/filter", api.Filter())
-	s.mux.HandleFunc("GET /news/detailed/{id}", api.Detailed())
-	s.mux.HandleFunc("POST /news/comment", api.AddComment())
+	s.mux.HandleFunc("GET /news", News(s.proxy[news], s.cl))
+	s.mux.HandleFunc("GET /news/id/{id}", NewsById(s.proxy[news], s.proxy[comments], s.cl))
+	s.mux.HandleFunc("POST /comments/new", AddComment(s.proxy[comments], s.proxy[censor], s.cl))
 }
 
 // Shutdown останавливает сервер используя graceful shutdown.
