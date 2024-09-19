@@ -4,6 +4,7 @@ import (
 	"GoExamGatewayAPI/internal/logger"
 	"GoExamGatewayAPI/internal/middleware"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -74,10 +75,14 @@ func News(host string, client *http.Client) http.HandlerFunc {
 
 		copyHeader(w.Header(), resp.Header)
 		w.WriteHeader(resp.StatusCode)
-		io.Copy(w, resp.Body)
+		_, err = io.Copy(w, resp.Body)
+		if err != nil {
+			log.Error("failed to copy response body", logger.Err(err))
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 
 		log.Info("request served successfully")
-		log = nil
 	}
 }
 
@@ -94,6 +99,9 @@ func NewsById(hostNews, hostComments string, client *http.Client) http.HandlerFu
 		)
 
 		log.Info("request to receive post by ID with comments")
+
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
 
 		// Объявим функцию, которая вызывает request и декодирует
 		// ответ в структуру.
@@ -131,8 +139,9 @@ func NewsById(hostNews, hostComments string, client *http.Client) http.HandlerFu
 		var comments []FullComment
 		var errProxy error
 		var wg sync.WaitGroup
+		ctx, cancel := context.WithCancel(context.Background())
 		rNews := r.Clone(r.Context())
-		rComm := r.Clone(r.Context())
+		rComm := r.Clone(ctx)
 
 		// Сделаем запросы в сервис новостей и сервис комментариев
 		// в отдельных горутинах.
@@ -140,9 +149,12 @@ func NewsById(hostNews, hostComments string, client *http.Client) http.HandlerFu
 		go func() {
 			defer wg.Done()
 			err := fn(hostNews, rNews, &post)
+			// Если при получении новости возникла ошибка, то сохраняем ее
+			// для дальнейшей обработки, затем прерываем запрос комментариев.
 			if err != nil {
 				log.Error("failed to receive post", logger.Err(err))
 				errProxy = err
+				cancel()
 				return
 			}
 			log.Debug("post received successfuly")
@@ -154,6 +166,9 @@ func NewsById(hostNews, hostComments string, client *http.Client) http.HandlerFu
 			uri = strings.ReplaceAll(uri, "news/id", "comments")
 			rComm.URL.Path = uri
 			err := fn(hostComments, rComm, &comments)
+			// Если при получении комментариев возникла ошибка, то не обрабатываем
+			// ее как в горутине получения новости, так как ошибка получения новости
+			// критична, а получения комментариев - нет.
 			if err != nil {
 				log.Error("failed to receive comments", logger.Err(err))
 				return
@@ -181,7 +196,6 @@ func NewsById(hostNews, hostComments string, client *http.Client) http.HandlerFu
 			Post:     post,
 			Comments: comments,
 		}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "\t")
 		err := enc.Encode(fullPost)
@@ -190,9 +204,7 @@ func NewsById(hostNews, hostComments string, client *http.Client) http.HandlerFu
 			http.Error(w, "failed to encode post and comments", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
 		log.Info("request served successfuly")
-		log = nil
 	}
 }
 
@@ -259,9 +271,13 @@ func AddComment(hostComments, hostCensor string, client *http.Client) http.Handl
 		// Полностью копируем ответ сервиса комментариев в ResponseWriter.
 		copyHeader(w.Header(), respComm.Header)
 		w.WriteHeader(respComm.StatusCode)
-		io.Copy(w, respComm.Body)
+		_, err = io.Copy(w, respComm.Body)
+		if err != nil {
+			log.Error("failed to copy response body", logger.Err(err))
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 
 		log.Info("request served successfully")
-		log = nil
 	}
 }
